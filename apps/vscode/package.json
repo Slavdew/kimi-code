@@ -3,7 +3,7 @@
   "publisher": "moonshot-ai",
   "displayName": "Kimi Code — Tab Experience (Unofficial)",
   "description": "Unofficial Kimi Code build with restored editor tabs, session titles, and quick actions",
-  "version": "0.8.4-tab.3",
+  "version": "0.8.4-tab.4",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",

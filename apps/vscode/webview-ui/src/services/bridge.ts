@@ -140,6 +140,10 @@ class Bridge {
     return this.call<LoginStatus>(Methods.CheckLoginStatus);
   }
 
+  getManagedUsage() {
+    return this.call<import("shared/types").AuthManagedUsageResult>(Methods.GetManagedUsage);
+  }
+
   login() {
     return this.call<LoginResult>(Methods.Login, undefined, OAUTH_REQUEST_TIMEOUT_MS);
   }

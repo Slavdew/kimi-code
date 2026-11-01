@@ -19,6 +19,7 @@ interface MarkdownProps {
   className?: string;
   enableEnrichment?: boolean;
   enableLocalImageRender?: boolean;
+  preserveLineBreaks?: boolean;
 }
 
 function useIsDark(): boolean {
@@ -179,7 +180,7 @@ function unwrapParagraphs(children: React.ReactNode): React.ReactNode {
   });
 }
 
-export const Markdown = memo(function Markdown({ content, className, enableEnrichment = true, enableLocalImageRender = true }: MarkdownProps) {
+export const Markdown = memo(function Markdown({ content, className, enableEnrichment = true, enableLocalImageRender = true, preserveLineBreaks = false }: MarkdownProps) {
   const isDark = useIsDark();
   const [fileMap, setFileMap] = useState<Record<string, boolean>>({});
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
@@ -191,7 +192,7 @@ export const Markdown = memo(function Markdown({ content, className, enableEnric
       return;
     }
     const paths = extractPaths(content);
-    if (!paths.length) {
+    if (paths.length === 0) {
       setFileMap({});
       return;
     }
@@ -211,8 +212,8 @@ export const Markdown = memo(function Markdown({ content, className, enableEnric
   const components: Components = useMemo(() => {
     const enrich = (children: React.ReactNode) => (enableEnrichment ? enrichChildren(children, fileMap) : children);
     return {
-      p: ({ children }) => <p className="mb-2 last:mb-0">{enrich(children)}</p>,
-      li: ({ children }) => <li>{enrich(unwrapParagraphs(children))}</li>,
+      p: ({ children }) => <p className={preserveLineBreaks ? "mb-2 last:mb-0 whitespace-pre-wrap" : "mb-2 last:mb-0"}>{enrich(children)}</p>,
+      li: ({ children }) => <li className={preserveLineBreaks ? "whitespace-pre-wrap" : undefined}>{enrich(unwrapParagraphs(children))}</li>,
       strong: ({ children }) => <strong>{enrich(children)}</strong>,
       em: ({ children }) => <em>{enrich(children)}</em>,
       td: ({ children }) => <td className="border border-border px-2 py-1">{enrich(children)}</td>,
@@ -262,7 +263,7 @@ export const Markdown = memo(function Markdown({ content, className, enableEnric
         return <CodeBlock code={code} language={match?.[1]} enableHighlight={enableEnrichment && !!match} style={codeStyle} />;
       },
     };
-  }, [enableEnrichment, enableLocalImageRender, fileMap, codeStyle]);
+  }, [enableEnrichment, enableLocalImageRender, preserveLineBreaks, fileMap, codeStyle]);
 
   if (!content) return null;
 

@@ -69,10 +69,10 @@ function MainContent({ onAuthAction }: { onAuthAction: () => void }) {
 
   return (
     <>
-      <div className="flex-1 min-h-0 relative group/chat">
+      <div className="flex-1 min-h-0 relative group/chat w-full max-w-[960px] mx-auto">
         <ChatArea />
       </div>
-      <div className="shrink-0 max-h-[80vh] flex flex-col min-h-0">
+      <div className="shrink-0 max-h-[80vh] flex flex-col min-h-0 w-full max-w-[960px] mx-auto">
         <InputArea onAuthAction={onAuthAction} />
       </div>
       <MCPServersModal />

@@ -1,6 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { useChatStore } from "@/stores";
 import { cn } from "@/lib/utils";
-import { IconArrowUp, IconArrowDown, IconBrandSpeedtest, IconRefresh } from "@tabler/icons-react";
+import { bridge } from "@/services";
+import { IconArrowUp, IconArrowDown, IconBrandSpeedtest, IconGauge, IconRefresh } from "@tabler/icons-react";
+import type { ManagedQuota, ManagedQuotaEntry } from "shared/types";
+import { Button } from "./ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export function TokenInfo() {
@@ -113,5 +118,81 @@ export function ChatStatus() {
         </Tooltip>
       </div>
     </div>
+  );
+}
+
+interface ManagedQuotaRow {
+  label: string;
+  shortLabel: string;
+  entry: ManagedQuotaEntry;
+}
+
+function managedQuotaRows(quota: ManagedQuota): ManagedQuotaRow[] {
+  const rows: ManagedQuotaRow[] = [];
+  const add = (label: string, shortLabel: string, entry?: ManagedQuotaEntry) => {
+    if (entry !== undefined) rows.push({ label, shortLabel, entry });
+  };
+  add("5-hour limit", "5h", quota.usages.limit5h);
+  add("Weekly limit", "Week", quota.usages.limit7d);
+  add("Monthly limit", "Month", quota.usages.monthTotal);
+  return rows;
+}
+
+function remainingPercent(entry: ManagedQuotaEntry): number {
+  const usedRatio = Number.isFinite(entry.usedRatio) ? Math.max(0, Math.min(1, entry.usedRatio)) : 1;
+  return Math.floor((1 - usedRatio) * 100);
+}
+
+function resetLabel(resetAt?: string): string | null {
+  if (resetAt === undefined) return null;
+  const date = new Date(resetAt);
+  return Number.isNaN(date.getTime()) ? null : `Resets ${date.toLocaleString()}`;
+}
+
+export function ManagedUsageStatus() {
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ["managedUsage"],
+    queryFn: () => bridge.getManagedUsage(),
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+    retry: false,
+  });
+
+  if (data?.kind !== "ok") return null;
+  const rows = managedQuotaRows(data.quota);
+  const primary = rows[0];
+  if (primary === undefined) return null;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="xs" className="gap-1 h-6 text-xs" aria-label="Subscription limits">
+          <IconGauge className="size-3.5" />
+          <span className="@max-[500px]:hidden">{primary.shortLabel} {remainingPercent(primary.entry)}% left</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-medium">Subscription limits</div>
+          <Button variant="ghost" size="icon-xs" aria-label="Refresh subscription limits" onClick={() => void refetch()}>
+            <IconRefresh className={cn("size-3.5", isFetching && "animate-spin")} />
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {rows.map((row) => {
+            const reset = resetLabel(row.entry.resetAt);
+            return (
+              <div key={row.label} className="text-xs">
+                <div className="flex items-center justify-between gap-3">
+                  <span>{row.label}</span>
+                  <span className="font-medium">{remainingPercent(row.entry)}% left</span>
+                </div>
+                {reset && <div className="text-[10px] text-muted-foreground">{reset}</div>}
+              </div>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

@@ -31,6 +31,7 @@ const host = vi.hoisted(() => {
     forkSession: vi.fn(),
     deleteSession: vi.fn(async () => undefined),
     renameSession: vi.fn(async () => undefined),
+    auth: { getManagedUsage: vi.fn() },
   };
   const showWarningMessage = vi.fn(async () => undefined as string | undefined);
 
@@ -99,6 +100,7 @@ beforeEach(async () => {
   host.harness.resumeSession.mockReset();
   host.harness.getConfig.mockReset();
   host.harness.getConfig.mockResolvedValue({ models: {} });
+  host.harness.auth.getManagedUsage.mockReset();
   host.createKimiHarness.mockImplementation(() => host.harness);
   host.showWarningMessage.mockReset();
   host.showWarningMessage.mockResolvedValue(undefined);
@@ -219,6 +221,19 @@ describe("Webview RPC boundary (validates requests before host dispatch)", () =>
 
     expect(result).toEqual({ id: "rpc-1", result: { ok: true } });
     expect(showLogs).toHaveBeenCalledOnce();
+  });
+
+  it("returns managed subscription usage through the SDK auth facade", async () => {
+    const usage = {
+      kind: "ok",
+      quota: { usages: { limit5h: { usedRatio: 0.25 } }, extraUsage: null },
+    };
+    host.harness.auth.getManagedUsage.mockResolvedValueOnce(usage);
+
+    const result = await bridge.handle({ id: "rpc-usage", method: Methods.GetManagedUsage }, "view-1");
+
+    expect(result).toEqual({ id: "rpc-usage", result: usage });
+    expect(host.harness.auth.getManagedUsage).toHaveBeenCalledOnce();
   });
 
   it("keeps provider identity when configured models share a display name", async () => {

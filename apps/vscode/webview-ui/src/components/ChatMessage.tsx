@@ -220,11 +220,8 @@ function UserMessage({ message }: { message: ChatMessageType }) {
     <div className="px-3 pt-3 pb-1 flex justify-end">
       <div className={cn("max-w-[85%] px-3.5 py-1.5 rounded-2xl rounded-br-md", "bg-zinc-100 dark:bg-zinc-800", "text-foreground")}>
         {displayContent && (
-          // FIX: removed whitespace-pre-wrap — it conflicted with ReactMarkdown's
-          // block-level elements (<p>, <ol>, <li>), doubling vertical spacing.
-          // ReactMarkdown already handles paragraph breaks from \n\n.
           <div className="text-xs leading-relaxed wrap-break-word">
-            <Markdown content={displayContent} enableEnrichment enableLocalImageRender={false} />
+            <Markdown content={displayContent} enableEnrichment enableLocalImageRender={false} preserveLineBreaks />
           </div>
         )}
         <MessageMedia images={images} videos={videos} onPreview={setPreviewMedia} />
@@ -249,7 +246,7 @@ function AssistantMessage({ message, turnIndex, isStreaming }: { message: ChatMe
     if (!hasSteps) {
       return typeof message.content === "string" ? message.content : "";
     }
-    const lastStep = steps[steps.length - 1];
+    const lastStep = steps.at(-1);
     const textItems = lastStep.items.filter((item) => item.type === "text");
     if (textItems.length > 0) {
       return textItems.map((item) => (item as { type: "text"; content: string }).content).join("\n");

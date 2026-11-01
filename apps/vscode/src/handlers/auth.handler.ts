@@ -11,7 +11,7 @@ import { resolveKimiHome } from "@moonshot-ai/kimi-code-sdk";
 
 import { Events, Methods } from "../../shared/bridge";
 import type { LoginResult } from "../../shared/legacy-sdk";
-import type { LoginStatus } from "../../shared/types";
+import type { AuthManagedUsageResult, LoginStatus } from "../../shared/types";
 import { updateLoginContext } from "../utils/context";
 import { readPersistedKimiOAuthRef, resolveExtensionRegion } from "../utils/region";
 import type { Handler } from "./types";
@@ -39,6 +39,10 @@ export const authHandlers: Record<string, Handler<any, any>> = {
       loggedIn: await updateLoginContext(ctx.harness),
       siteBase: kimiRegionProfile(region).siteBase,
     };
+  },
+
+  [Methods.GetManagedUsage]: async (_, ctx): Promise<AuthManagedUsageResult> => {
+    return ctx.harness.auth.getManagedUsage();
   },
 
   [Methods.Login]: async (_, ctx): Promise<LoginResult> => {

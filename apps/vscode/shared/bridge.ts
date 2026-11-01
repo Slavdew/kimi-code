@@ -16,6 +16,7 @@ export const Methods = {
 
   GetSlashCommands: "getSlashCommands",
   CheckLoginStatus: "checkLoginStatus",
+  GetManagedUsage: "getManagedUsage",
   Login: "login",
   Logout: "logout",
   SaveConfig: "saveConfig",
@@ -152,6 +153,7 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
     case Methods.GetInputHistory:
     case Methods.GetSlashCommands:
     case Methods.CheckLoginStatus:
+    case Methods.GetManagedUsage:
     case Methods.Login:
     case Methods.Logout:
     case Methods.GetExtensionConfig:

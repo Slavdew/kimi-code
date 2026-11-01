@@ -1,5 +1,24 @@
 import type { RunResult, StreamEvent } from "./legacy-sdk";
 
+export interface ManagedQuotaEntry {
+  usedRatio: number;
+  resetAt?: string;
+}
+
+export interface ManagedQuota {
+  usages: {
+    limit5h?: ManagedQuotaEntry;
+    limit7d?: ManagedQuotaEntry;
+    monthTotal?: ManagedQuotaEntry;
+    monthCode?: ManagedQuotaEntry;
+  };
+  extraUsage: unknown;
+}
+
+export type AuthManagedUsageResult =
+  | { kind: "ok"; quota: ManagedQuota }
+  | { kind: "error"; message: string; status?: number };
+
 export interface SessionConfig {
   model: string;
   thinking?: boolean;

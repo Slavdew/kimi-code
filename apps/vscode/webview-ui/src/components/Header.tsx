@@ -7,7 +7,7 @@ import { StreamingConfirmDialog } from "./StreamingConfirmDialog";
 import { KimiLogo } from "./KimiLogo";
 import { SessionList } from "./SessionList";
 import { useChatStore } from "@/stores";
-import { ChatStatus, TokenInfo } from "./ChatStatus";
+import { ChatStatus, ManagedUsageStatus, TokenInfo } from "./ChatStatus";
 
 export function Header() {
   const [showSessionList, setShowSessionList] = useState(false);
@@ -50,6 +50,7 @@ export function Header() {
           </Button>
         )}
         <ChatStatus />
+        <ManagedUsageStatus />
         <Popover open={showSessionList} onOpenChange={setShowSessionList}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="xs" className="gap-1 h-6">

@@ -3,7 +3,7 @@
   "publisher": "moonshot-ai",
   "displayName": "Kimi Code — Tab Experience (Unofficial)",
   "description": "Unofficial Kimi Code build with restored editor tabs, session titles, and quick actions",
-  "version": "0.8.4-tab.2",
+  "version": "0.8.4-tab.3",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -106,7 +106,10 @@
       {
         "command": "kimi.openInTab",
         "title": "Kimi Code: Open in New Tab",
-        "icon": "resources/kimi-icon.svg"
+        "icon": {
+          "light": "resources/kimi-icon.svg",
+          "dark": "resources/kimi-icon-dark.svg"
+        }
       },
       {
         "command": "kimi.openInSideBar",
@@ -188,18 +191,25 @@
       "editor/title": [
         {
           "command": "kimi.openInTab",
-          "when": "activeEditor == kimiPanel",
+          "when": "activeEditor =~ /(^|-)kimiPanel$/",
           "group": "navigation@1"
         },
         {
           "command": "kimi.newConversation",
-          "when": "activeEditor == kimiPanel",
+          "when": "activeEditor =~ /(^|-)kimiPanel$/",
           "group": "navigation@2"
         },
         {
           "command": "kimi.renameConversation",
-          "when": "activeEditor == kimiPanel",
+          "when": "activeEditor =~ /(^|-)kimiPanel$/",
           "group": "navigation@3"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "kimi.renameConversation",
+          "when": "activeEditor =~ /(^|-)kimiPanel$/",
+          "group": "kimi@1"
         }
       ],
       "view/title": [

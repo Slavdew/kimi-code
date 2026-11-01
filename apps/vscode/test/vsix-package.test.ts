@@ -28,22 +28,32 @@ describe('VSIX package CLI (target planning and validation)', () => {
     const manifest = JSON.parse(await readFile(join(appRoot, 'package.json'), 'utf8'));
     const openInTab = manifest.contributes.commands.find((command: { command: string }) => command.command === 'kimi.openInTab');
 
-    expect(openInTab.icon).toBe('resources/kimi-icon.svg');
+    expect(openInTab.icon).toEqual({
+      light: 'resources/kimi-icon.svg',
+      dark: 'resources/kimi-icon-dark.svg',
+    });
     expect(manifest.contributes.menus['editor/title']).toEqual([
       {
         command: 'kimi.openInTab',
-        when: 'activeEditor == kimiPanel',
+        when: 'activeEditor =~ /(^|-)kimiPanel$/',
         group: 'navigation@1',
       },
       {
         command: 'kimi.newConversation',
-        when: 'activeEditor == kimiPanel',
+        when: 'activeEditor =~ /(^|-)kimiPanel$/',
         group: 'navigation@2',
       },
       {
         command: 'kimi.renameConversation',
-        when: 'activeEditor == kimiPanel',
+        when: 'activeEditor =~ /(^|-)kimiPanel$/',
         group: 'navigation@3',
+      },
+    ]);
+    expect(manifest.contributes.menus['editor/title/context']).toEqual([
+      {
+        command: 'kimi.renameConversation',
+        when: 'activeEditor =~ /(^|-)kimiPanel$/',
+        group: 'kimi@1',
       },
     ]);
   });

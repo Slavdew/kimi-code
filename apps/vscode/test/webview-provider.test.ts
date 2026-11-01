@@ -25,6 +25,7 @@ const host = vi.hoisted(() => {
     readonly runtime = { harness: {}, setYoloModeForActiveSessions: vi.fn() };
     readonly onViewStateChange: Listener;
     readonly emitViewState = vi.fn(async () => undefined);
+    readonly renameSession = vi.fn(async () => undefined);
     readonly dispose = vi.fn(async () => undefined);
     readonly disposeView = vi.fn(async () => undefined);
     readonly handle = vi.fn();
@@ -46,6 +47,9 @@ const host = vi.hoisted(() => {
     activeTabInput: null as unknown,
     activeViewColumn: 1,
     createWebviewPanel: vi.fn(),
+    showInputBox: vi.fn(),
+    showWarningMessage: vi.fn(async () => undefined),
+    showErrorMessage: vi.fn(async () => undefined),
   };
 });
 
@@ -55,6 +59,9 @@ vi.mock("vscode", () => ({
   TabInputWebview: host.TabInputWebview,
   window: {
     createWebviewPanel: host.createWebviewPanel,
+    showInputBox: host.showInputBox,
+    showWarningMessage: host.showWarningMessage,
+    showErrorMessage: host.showErrorMessage,
     tabGroups: {
       get activeTabGroup() {
         return {
@@ -105,8 +112,9 @@ describe("KimiWebviewProvider panels", () => {
     const created = provider.createPanel();
 
     expect(created).toBe(panel);
-    expect(panel.iconPath).toBeInstanceOf(host.Uri);
-    expect((panel.iconPath as TestUri).fsPath).toBe(join("/extension", "resources", "kimi-icon.svg"));
+    const icons = panel.iconPath as { light: TestUri; dark: TestUri };
+    expect(icons.light.fsPath).toBe(join("/extension", "resources", "kimi-icon.svg"));
+    expect(icons.dark.fsPath).toBe(join("/extension", "resources", "kimi-icon-dark.svg"));
   });
 
   it("updates the title and serializes state independently for each panel", () => {
@@ -192,6 +200,34 @@ describe("KimiWebviewProvider panels", () => {
     expect(background.webview.postMessage).not.toHaveBeenCalledWith({ event: Events.NewConversation, data: {} });
   });
 
+  it("renames the active conversation with a normalized persistent title", async () => {
+    const panel = makePanel();
+    host.createWebviewPanel.mockReturnValue(panel);
+    const provider = makeProvider();
+    provider.createPanel();
+    const bridge = host.BridgeHandler.instances[0]!;
+    const id = webviewId(panel);
+    bridge.onViewStateChange(id, { sessionId: "session-1", workDir: "/workspace", title: "Original title" });
+    host.showInputBox.mockResolvedValue("  Custom\nconversation  ");
+
+    await expect(provider.renameActivePanel()).resolves.toBe(true);
+
+    expect(host.showInputBox).toHaveBeenCalledWith(expect.objectContaining({ value: "Original title" }));
+    expect(bridge.renameSession).toHaveBeenCalledWith(id, "Custom conversation");
+  });
+
+  it("does not try to rename an empty panel", async () => {
+    const panel = makePanel();
+    host.createWebviewPanel.mockReturnValue(panel);
+    const provider = makeProvider();
+    provider.createPanel();
+
+    await expect(provider.renameActivePanel()).resolves.toBe(true);
+
+    expect(host.showWarningMessage).toHaveBeenCalledWith("Start a conversation before renaming it.");
+    expect(host.BridgeHandler.instances[0]!.renameSession).not.toHaveBeenCalled();
+  });
+
   it("normalizes long and multiline panel titles", () => {
     const panel = makePanel();
     host.createWebviewPanel.mockReturnValue(panel);
@@ -204,8 +240,8 @@ describe("KimiWebviewProvider panels", () => {
       title: `  First line\nSecond line ${"x".repeat(100)}  `,
     });
 
-    expect(panel.title).toBe(`First line Second line ${"x".repeat(56)}…`);
-    expect(panel.title).toHaveLength(80);
+    expect(panel.title).toBe(`First line Second line ${"x".repeat(16)}…`);
+    expect(panel.title).toHaveLength(40);
   });
 
   it("clears serialized panel state when resetting webviews", async () => {

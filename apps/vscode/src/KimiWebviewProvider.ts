@@ -80,7 +80,10 @@ export class KimiWebviewProvider implements vscode.WebviewViewProvider, vscode.W
     this.panels.set(webviewId, panel);
     if (state !== null) this.panelStates.set(webviewId, state);
     panel.title = panelTitle(state?.title);
-    panel.iconPath = vscode.Uri.joinPath(this.extensionUri, "resources", "kimi-icon.svg");
+    panel.iconPath = {
+      light: vscode.Uri.joinPath(this.extensionUri, "resources", "kimi-icon.svg"),
+      dark: vscode.Uri.joinPath(this.extensionUri, "resources", "kimi-icon-dark.svg"),
+    };
     this.setupWebview(webviewId, panel.webview);
 
     const visibilitySubscription = panel.onDidChangeViewState(() => {
@@ -108,13 +111,43 @@ export class KimiWebviewProvider implements vscode.WebviewViewProvider, vscode.W
   }
 
   newConversationInActivePanel(): boolean {
-    const group = vscode.window.tabGroups.activeTabGroup;
-    const input = group.activeTab?.input;
-    if (!(input instanceof vscode.TabInputWebview) || !isKimiPanelViewType(input.viewType)) return false;
-    const active = [...this.panels.entries()].find(([, panel]) => panel.active && panel.viewColumn === group.viewColumn);
+    const active = this.activePanel();
     if (active === undefined) return false;
     this.broadcastInternal(Events.NewConversation, {}, active[0]);
     return true;
+  }
+
+  async renameActivePanel(): Promise<boolean> {
+    const active = this.activePanel();
+    if (active === undefined) return false;
+    const [webviewId, panel] = active;
+    const state = this.panelStates.get(webviewId);
+    if (state === undefined || state.sessionId === null) {
+      await vscode.window.showWarningMessage("Start a conversation before renaming it.");
+      return true;
+    }
+
+    const value = await vscode.window.showInputBox({
+      title: "Rename Kimi Conversation",
+      placeHolder: "Conversation name",
+      value: state.title ?? panel.title,
+      validateInput: (input) => normalizeTitle(input) ? null : "Conversation name cannot be empty.",
+    });
+    if (value === undefined) return true;
+
+    try {
+      await this.bridgeHandler.renameSession(webviewId, normalizeTitle(value));
+    } catch (error) {
+      await vscode.window.showErrorMessage(`Unable to rename the conversation: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return true;
+  }
+
+  private activePanel(): [string, vscode.WebviewPanel] | undefined {
+    const group = vscode.window.tabGroups.activeTabGroup;
+    const input = group.activeTab?.input;
+    if (!(input instanceof vscode.TabInputWebview) || !isKimiPanelViewType(input.viewType)) return undefined;
+    return [...this.panels.entries()].find(([, panel]) => panel.active && panel.viewColumn === group.viewColumn);
   }
 
   async insertEditorMention(documentUri: vscode.Uri, selection: vscode.Selection): Promise<boolean> {
@@ -230,10 +263,14 @@ export class KimiWebviewProvider implements vscode.WebviewViewProvider, vscode.W
   }
 }
 
+function normalizeTitle(title: string | null | undefined): string {
+  return title?.replaceAll(/\s+/g, " ").trim() ?? "";
+}
+
 function panelTitle(title: string | null | undefined): string {
-  const normalized = title?.replaceAll(/\s+/g, " ").trim();
+  const normalized = normalizeTitle(title);
   if (!normalized) return "Kimi Code";
-  return normalized.length <= 80 ? normalized : `${normalized.slice(0, 79)}…`;
+  return normalized.length <= 40 ? normalized : `${normalized.slice(0, 39)}…`;
 }
 
 function isKimiPanelViewType(viewType: string): boolean {

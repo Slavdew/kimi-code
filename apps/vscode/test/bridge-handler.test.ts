@@ -30,6 +30,7 @@ const host = vi.hoisted(() => {
     resumeSession: vi.fn(),
     forkSession: vi.fn(),
     deleteSession: vi.fn(async () => undefined),
+    renameSession: vi.fn(async () => undefined),
   };
   const showWarningMessage = vi.fn(async () => undefined as string | undefined);
 
@@ -463,6 +464,32 @@ describe("Webview RPC boundary (validates requests before host dispatch)", () =>
       sessionId: null,
       workDir: root,
       title: null,
+    });
+  });
+
+  it("persists a custom session title and publishes it to the panel", async () => {
+    const session = createResumedSession("session-1", root);
+    host.harness.resumeSession.mockResolvedValueOnce(session as never);
+    await bridge.handle(
+      {
+        id: "rpc-load",
+        method: Methods.LoadKimiSessionHistory,
+        params: { kimiSessionId: "session-1" },
+      },
+      "view-1",
+    );
+    host.harness.renameSession.mockImplementationOnce(async () => {
+      session.summary.title = "Custom conversation";
+    });
+
+    await bridge.renameSession("view-1", "Custom conversation");
+
+    expect(host.harness.renameSession).toHaveBeenCalledWith({ id: "session-1", title: "Custom conversation" });
+    expect(viewStates.at(-1)).toEqual({
+      webviewId: "view-1",
+      sessionId: "session-1",
+      workDir: root,
+      title: "Custom conversation",
     });
   });
 

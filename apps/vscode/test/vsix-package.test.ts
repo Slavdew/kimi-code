@@ -40,6 +40,11 @@ describe('VSIX package CLI (target planning and validation)', () => {
         when: 'activeEditor == kimiPanel',
         group: 'navigation@2',
       },
+      {
+        command: 'kimi.renameConversation',
+        when: 'activeEditor == kimiPanel',
+        group: 'navigation@3',
+      },
     ]);
   });
 

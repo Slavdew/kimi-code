@@ -14,6 +14,7 @@ const EXPECTED_COMMANDS = [
   "kimi.newConversation",
   "kimi.openInSideBar",
   "kimi.openInTab",
+  "kimi.renameConversation",
   "kimi.resetKimi",
   "kimi.showLogs",
 ];

@@ -3,7 +3,7 @@
   "publisher": "moonshot-ai",
   "displayName": "Kimi Code — Tab Experience (Unofficial)",
   "description": "Unofficial Kimi Code build with restored editor tabs, session titles, and quick actions",
-  "version": "0.8.4-tab.1",
+  "version": "0.8.4-tab.2",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -129,6 +129,11 @@
         "icon": "$(add)"
       },
       {
+        "command": "kimi.renameConversation",
+        "title": "Kimi Code: Rename Conversation",
+        "icon": "$(edit)"
+      },
+      {
         "command": "kimi.showLogs",
         "title": "Kimi Code: Show Logs",
         "icon": "$(output)"
@@ -190,6 +195,11 @@
           "command": "kimi.newConversation",
           "when": "activeEditor == kimiPanel",
           "group": "navigation@2"
+        },
+        {
+          "command": "kimi.renameConversation",
+          "when": "activeEditor == kimiPanel",
+          "group": "navigation@3"
         }
       ],
       "view/title": [
@@ -227,6 +237,10 @@
         },
         {
           "command": "kimi.newConversation",
+          "when": "true"
+        },
+        {
+          "command": "kimi.renameConversation",
           "when": "true"
         },
         {

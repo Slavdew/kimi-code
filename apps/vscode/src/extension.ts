@@ -70,6 +70,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerWebviewViewProvider("kimi.webview", provider, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
+    vscode.window.registerWebviewPanelSerializer("kimiPanel", provider),
   );
 
   const migrationManager = new LegacyMigrationManager({
@@ -117,6 +118,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     },
     "kimi.newConversation": async () => {
+      if (provider?.newConversationInActivePanel()) return;
       await vscode.commands.executeCommand("kimi.webview.focus");
       provider?.broadcast(Events.NewConversation, {});
     },

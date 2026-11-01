@@ -87,12 +87,14 @@ let root: string;
 let showLogs: Mock<() => void>;
 let writeLog: Mock<(message: string) => void>;
 let workspaceState: { get: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+let viewStates: Array<{ webviewId: string; sessionId: string | null; workDir: string | null; title: string | null }>;
 
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "kimi-vscode-bridge-"));
   host.workspaceFolders.splice(0, host.workspaceFolders.length, { uri: new host.Uri(root) });
   showLogs = vi.fn();
   writeLog = vi.fn();
+  viewStates = [];
   host.harness.resumeSession.mockReset();
   host.harness.getConfig.mockReset();
   host.harness.getConfig.mockResolvedValue({ models: {} });
@@ -107,6 +109,7 @@ beforeEach(async () => {
     vi.fn(),
     showLogs,
     writeLog,
+    (webviewId, state) => viewStates.push({ webviewId, ...state }),
   );
 });
 
@@ -432,6 +435,37 @@ describe("Webview RPC boundary (validates requests before host dispatch)", () =>
     expect(deleteBaseline).toHaveBeenCalledWith("session-2");
   });
 
+  it("publishes the restored session title and clears it for a new conversation", async () => {
+    const session = createResumedSession("session-1", root);
+    session.summary.title = "Renamed conversation";
+    host.harness.resumeSession.mockResolvedValueOnce(session as never);
+
+    await bridge.handle(
+      {
+        id: "rpc-load",
+        method: Methods.LoadKimiSessionHistory,
+        params: { kimiSessionId: "session-1" },
+      },
+      "view-1",
+    );
+
+    expect(viewStates).toContainEqual({
+      webviewId: "view-1",
+      sessionId: "session-1",
+      workDir: root,
+      title: "Renamed conversation",
+    });
+
+    await bridge.handle({ id: "rpc-reset", method: Methods.ResetSession }, "view-1");
+
+    expect(viewStates.at(-1)).toEqual({
+      webviewId: "view-1",
+      sessionId: null,
+      workDir: root,
+      title: null,
+    });
+  });
+
   it("keeps conversation history available when its baseline snapshot disappears", async () => {
     const session = createResumedSession("session-1", root);
     host.harness.resumeSession.mockResolvedValueOnce(session as never);
@@ -662,6 +696,7 @@ function createResumedSession(id: string, workDir: string) {
     sessionDir: join("/private/kimi/sessions", id),
     createdAt: 1,
     updatedAt: 2,
+    title: undefined as string | undefined,
     metadata: { vscode_legacy_approval: { yolo: false, afk: false } },
   };
   return {

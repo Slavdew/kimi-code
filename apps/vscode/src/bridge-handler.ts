@@ -2,7 +2,9 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import {
+  Methods,
   validateRpcMessage,
+  type KimiPanelState,
   type RpcMethod,
   type RpcResult,
 } from "../shared/bridge";
@@ -22,6 +24,15 @@ import {
   workDirUriFromPath,
 } from "./utils/workspace-path";
 
+const viewStateMethods = new Set<RpcMethod>([
+  Methods.StreamChat,
+  Methods.ResetSession,
+  Methods.SetWorkDir,
+  Methods.BrowseWorkDir,
+  Methods.LoadKimiSessionHistory,
+  Methods.DeleteKimiSession,
+]);
+
 export class BridgeHandler {
   readonly baselineManager: BaselineManager;
   readonly runtime: KimiRuntime;
@@ -36,6 +47,7 @@ export class BridgeHandler {
     private readonly reloadWebview: ReloadWebviewFn,
     private readonly showLogs: ShowLogsFn,
     private readonly writeLog: (message: string) => void,
+    private readonly onViewStateChange: (webviewId: string, state: KimiPanelState) => void = () => {},
   ) {
     try {
       this.runtime = new KimiRuntime({
@@ -68,6 +80,7 @@ export class BridgeHandler {
     const msg = validation.message;
     try {
       const result = await this.dispatch(msg.method, msg.params, webviewId);
+      if (viewStateMethods.has(msg.method)) await this.emitViewState(webviewId);
       this.trace(msg.id, msg.method, Date.now() - startedAt, true);
       return { id: msg.id, result };
     } catch (error) {
@@ -77,6 +90,23 @@ export class BridgeHandler {
         id: msg.id,
         error: error instanceof Error ? error.message : String(error),
       };
+    }
+  }
+
+  async emitViewState(webviewId: string): Promise<void> {
+    try {
+      const sessionId = this.fileManager.getSessionId(webviewId);
+      const active = sessionId === null ? undefined : this.runtime.getSession(sessionId)?.summary;
+      const summary = active ?? (sessionId === null
+        ? undefined
+        : (await this.runtime.harness.listSessions({ sessionId }))[0]);
+      this.onViewStateChange(webviewId, {
+        sessionId,
+        workDir: this.getWorkDir(webviewId),
+        title: summary?.title ?? summary?.lastPrompt ?? null,
+      });
+    } catch (error) {
+      this.logRuntimeError("Unable to update the panel state", error);
     }
   }
 

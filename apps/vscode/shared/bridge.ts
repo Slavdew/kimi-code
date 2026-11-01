@@ -97,7 +97,26 @@ export const Events = {
   FileChangesUpdated: "fileChangesUpdated",
   RollbackInput: "rollbackInput",
   LoginUrl: "loginUrl",
+  PanelStateChanged: "panelStateChanged",
 } as const;
+
+export interface KimiPanelState {
+  readonly sessionId: string | null;
+  readonly workDir: string | null;
+  readonly title: string | null;
+}
+
+export function parseKimiPanelState(value: unknown): KimiPanelState | null {
+  if (!isPlainObject(value)) return null;
+  if (!isNullableString(value["sessionId"]) || !isNullableString(value["workDir"]) || !isNullableString(value["title"])) {
+    return null;
+  }
+  return {
+    sessionId: value["sessionId"],
+    workDir: value["workDir"],
+    title: value["title"],
+  };
+}
 
 const rpcMethods = new Set<string>(Object.values(Methods));
 
@@ -309,6 +328,10 @@ function isOptionalType(value: unknown, type: "string" | "boolean"): boolean {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

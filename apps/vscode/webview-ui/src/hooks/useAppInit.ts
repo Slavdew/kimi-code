@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { bridge, Events } from "@/services";
-import { requiresManagedProviderLogin, useSettingsStore } from "@/stores";
-import type { ExtensionConfig } from "shared/types";
+import { requiresManagedProviderLogin, useChatStore, useSettingsStore } from "@/stores";
+import { toast } from "@/components/ui/sonner";
+import type { KimiPanelState } from "shared/bridge";
+import type { ExtensionConfig, UIStreamEvent } from "shared/types";
 
 export type AppStatus = "loading" | "no-workspace" | "runtime-error" | "not-logged-in" | "no-models" | "ready";
 
@@ -44,6 +46,29 @@ export function resolveAppView(input: {
   return { view: "main" };
 }
 
+export async function restorePanelSession(input: {
+  readonly state: KimiPanelState | null;
+  readonly workspaceRoot: string | null;
+  readonly setCurrentWorkDir: (workDir: string | null) => void;
+  readonly loadSession: (sessionId: string, events: UIStreamEvent[]) => Promise<void>;
+}): Promise<string | null> {
+  const { state, workspaceRoot, setCurrentWorkDir, loadSession } = input;
+  if (state === null) return null;
+  try {
+    const result = await bridge.setWorkDir(state.workDir);
+    if (!result.ok) throw new Error("The saved working directory is unavailable.");
+    setCurrentWorkDir(result.workDir === workspaceRoot ? null : result.workDir);
+    if (state.sessionId !== null) {
+      const events = await bridge.loadSessionHistory(state.sessionId);
+      await loadSession(state.sessionId, events);
+    }
+    return null;
+  } catch (error) {
+    await bridge.resetSession().catch(() => undefined);
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
 export interface AppInitState {
   status: AppStatus;
   errorMessage: string | null;
@@ -59,7 +84,15 @@ export function useAppInit(): AppInitState {
   });
   const [initKey, setInitKey] = useState(0);
   const catalogApplied = useRef(false);
-  const { initModels, setModels, setExtensionConfig, setWireSlashCommands, setIsLoggedIn, setWorkspaceRoot } = useSettingsStore();
+  const {
+    initModels,
+    setModels,
+    setExtensionConfig,
+    setWireSlashCommands,
+    setIsLoggedIn,
+    setWorkspaceRoot,
+    setCurrentWorkDir,
+  } = useSettingsStore();
 
   const refresh = useCallback(() => {
     catalogApplied.current = false;
@@ -108,7 +141,8 @@ export function useAppInit(): AppInitState {
           return;
         }
 
-        setWorkspaceRoot(workspace.workspaceRoot ?? workspace.path ?? null);
+        const workspaceRoot = workspace.workspaceRoot ?? workspace.path ?? null;
+        setWorkspaceRoot(workspaceRoot);
 
         const [extensionConfig, slashCommands] = await Promise.all([
           bridge.getExtensionConfig(),
@@ -153,6 +187,16 @@ export function useAppInit(): AppInitState {
           return;
         }
 
+        const restoreError = await restorePanelSession({
+          state: bridge.getInitialPanelState(),
+          workspaceRoot,
+          setCurrentWorkDir,
+          loadSession: useChatStore.getState().loadSession,
+        });
+        if (restoreError !== null && !cancelled) {
+          toast.warning(`Unable to restore the conversation: ${restoreError}`);
+        }
+
         setState({ status: "ready", errorMessage: null, modelsCount });
       } catch (error) {
         if (!cancelled) {
@@ -169,7 +213,7 @@ export function useAppInit(): AppInitState {
     return () => {
       cancelled = true;
     };
-  }, [initKey, initModels, setExtensionConfig, setWireSlashCommands, setIsLoggedIn]);
+  }, [initKey, initModels, setExtensionConfig, setWireSlashCommands, setIsLoggedIn, setCurrentWorkDir]);
 
   return { ...state, refresh };
 }

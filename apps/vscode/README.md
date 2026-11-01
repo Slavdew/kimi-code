@@ -1,6 +1,8 @@
-# Kimi Code
+# Kimi Code — Tab Experience (Unofficial)
 
 AI coding assistant for VS Code, built for long-context workflows and complex coding tasks.
+
+This is an unofficial community build based on Kimi Code 0.8.4. It adds Kimi icons and session titles to editor tabs, quick actions in the editor title bar, and restoration of open conversations after a window reload. Install the VSIX over the official extension and disable automatic updates for Kimi Code if you want to keep this build.
 
 ## Features
 

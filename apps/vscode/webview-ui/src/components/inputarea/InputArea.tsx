@@ -58,7 +58,7 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
   const [cursorPos, setCursorPos] = useState(0);
   const [previewMedia, setPreviewMedia] = useState<string | null>(null);
 
-  const { isStreaming, sendMessage, abort, draftMedia, removeDraftMedia, hasProcessingMedia, getMediaInConversation, pendingInput, planMode, messages } = useChatStore();
+  const { isStreaming, sendMessage, abort, draftMedia, removeDraftMedia, hasProcessingMedia, getMediaInConversation, pendingInput, shouldRestorePendingInput, planMode, messages } = useChatStore();
   const { currentModel, thinkingEffort, updateModel, toggleThinking, selectThinkingEffort, models, extensionConfig, getCurrentThinkingMode } = useSettingsStore();
 
   const isProcessing = hasProcessingMedia();
@@ -118,7 +118,7 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
 
   // Restore pending input
   useEffect(() => {
-    if (!pendingInput || isStreaming) {
+    if (!pendingInput || !shouldRestorePendingInput || isStreaming) {
       return;
     }
 
@@ -135,7 +135,7 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
         adjustHeight(textareaRef.current);
       }, 0);
     }
-  }, [pendingInput, isStreaming]);
+  }, [pendingInput, shouldRestorePendingInput, isStreaming]);
 
   const activeToken = useMemo(() => findActiveToken(text, cursorPos), [text, cursorPos]);
 

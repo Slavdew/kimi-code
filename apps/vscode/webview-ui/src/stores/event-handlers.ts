@@ -250,6 +250,7 @@ function handlePreflightError(draft: ChatState, _code: string, _message: string)
   draft.activeTokenUsage = createEmptyTokenUsage();
   draft.isStreaming = false;
   draft.isCompacting = false;
+  draft.shouldRestorePendingInput = true;
   useApprovalStore.getState().clearRequests();
 
   // 删除空的 assistant 消息
@@ -302,6 +303,7 @@ const eventHandlers: Record<string, EventHandler> = {
     draft.isStreaming = false;
     draft.isCompacting = false;
     draft.pendingInput = null;
+    draft.shouldRestorePendingInput = false;
     useApprovalStore.getState().clearRequests();
     const lastAssistant = getLastAssistant(draft);
     if (lastAssistant?.steps) {
@@ -317,6 +319,7 @@ const eventHandlers: Record<string, EventHandler> = {
       return;
     } // 忽略未知事件类型错误，通常是版本不匹配导致
 
+    draft.shouldRestorePendingInput = false;
     if (phase === "preflight") {
       handlePreflightError(draft, code, payload.message);
     } else {

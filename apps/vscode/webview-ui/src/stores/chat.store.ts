@@ -99,6 +99,7 @@ export interface ChatState {
   tokenUsage: TokenUsage;
   activeTokenUsage: TokenUsage;
   pendingInput: PendingInput | null;
+  shouldRestorePendingInput: boolean;
   queue: QueuedItem[];
   pendingQuestion: QuestionRequest | null;
   planMode: boolean;
@@ -185,6 +186,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   tokenUsage: createEmptyTokenUsage(),
   activeTokenUsage: createEmptyTokenUsage(),
   pendingInput: null,
+  shouldRestorePendingInput: false,
   queue: [],
   pendingQuestion: null,
   planMode: false,
@@ -215,6 +217,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         draft.isStreaming = true;
         draft.handshakeReceived = false;
         draft.pendingInput = { content, model: currentModel };
+        draft.shouldRestorePendingInput = false;
       }),
     );
     useApprovalStore.getState().clearRequests();
@@ -235,6 +238,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         clearAllInlineErrors(draft);
         draft.isStreaming = true;
         draft.handshakeReceived = false;
+        draft.shouldRestorePendingInput = false;
         const lastAssistant = draft.messages.at(-1);
         if (lastAssistant?.role === "assistant" && lastAssistant.inlineError) {
           draft.messages.pop();
@@ -250,6 +254,33 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   processEvent: (event) => {
+    if (
+      event.type === "error" &&
+      "code" in event &&
+      event.code === "turn.agent_busy" &&
+      "terminal" in event &&
+      event.terminal === false &&
+      !get().handshakeReceived
+    ) {
+      clearHandshakeTimer();
+      set(
+        produce((draft: ChatState) => {
+          if (draft.pendingInput) {
+            draft.queue.push({
+              id: crypto.randomUUID(),
+              content: draft.pendingInput.content,
+              model: draft.pendingInput.model,
+            });
+            draft.pendingInput = null;
+          }
+          draft.isStreaming = true;
+          draft.handshakeReceived = true;
+          draft.shouldRestorePendingInput = false;
+        }),
+      );
+      toast.warning(event.message);
+      return;
+    }
     // Mid-turn warnings (terminal === false) leave the turn, the composer, and
     // the queued messages untouched — the engine is still streaming, so they
     // are surfaced as a transient toast only.
@@ -301,6 +332,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       tokenUsage: createEmptyTokenUsage(),
       activeTokenUsage: createEmptyTokenUsage(),
       pendingInput: null,
+      shouldRestorePendingInput: false,
       queue: [],
       pendingQuestion: null,
       planMode: false,
@@ -355,6 +387,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       tokenUsage: createEmptyTokenUsage(),
       activeTokenUsage: createEmptyTokenUsage(),
       pendingInput: null,
+      shouldRestorePendingInput: false,
       queue: [],
       pendingQuestion: null,
       planMode: false,
@@ -425,7 +458,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   rollbackInput: (content) => {
     const { currentModel } = useSettingsStore.getState();
-    set({ pendingInput: { content, model: currentModel } });
+    set({ pendingInput: { content, model: currentModel }, shouldRestorePendingInput: true });
   },
 
   respondQuestion: async (answers) => {
@@ -478,6 +511,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         draft.isStreaming = true;
         draft.handshakeReceived = false;
         draft.pendingInput = { content: next.content, model: next.model };
+        draft.shouldRestorePendingInput = false;
         draft.draftMedia = [];
       }),
     );

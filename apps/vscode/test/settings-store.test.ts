@@ -72,6 +72,7 @@ beforeEach(() => {
     tokenUsage: { input_other: 0, output: 0, input_cache_read: 0, input_cache_creation: 0 },
     activeTokenUsage: { input_other: 0, output: 0, input_cache_read: 0, input_cache_creation: 0 },
     pendingInput: null,
+    shouldRestorePendingInput: false,
     queue: [],
     pendingQuestion: null,
     planMode: false,
@@ -289,6 +290,7 @@ describe("Webview chat error recovery", () => {
       isStreaming: false,
       isCompacting: false,
       pendingInput: { content: "retry this request", model: "plain" },
+      shouldRestorePendingInput: true,
     });
   });
 
@@ -308,7 +310,11 @@ describe("Webview chat error recovery", () => {
       phase: "runtime",
     });
 
-    expect(useChatStore.getState().isStreaming).toBe(false);
+    expect(useChatStore.getState()).toMatchObject({
+      isStreaming: false,
+      pendingInput: { content: "start a turn", model: "plain" },
+      shouldRestorePendingInput: false,
+    });
     expect(useChatStore.getState().messages.at(-1)?.inlineError).toEqual({
       code: "provider.api_error",
       message: "Service temporarily unavailable.",
@@ -571,18 +577,22 @@ describe("Webview mid-turn warnings", () => {
     useChatStore.getState().sendMessage("queued follow-up");
     expect(useChatStore.getState().isStreaming).toBe(true);
     expect(useChatStore.getState().queue).toHaveLength(1);
+    useChatStore.getState().processEvent({
+      type: "TurnBegin",
+      payload: { user_input: "first message" },
+    });
 
     useChatStore.getState().processEvent({
       type: "error",
-      code: "internal",
-      message: "Internal error occurred.",
+      code: "turn.agent_busy",
+      message: "A message is being sent. Please wait.",
       detail: "A response is already being generated for this session.",
       phase: "runtime",
       terminal: false,
     });
 
     // The turn is still running: nothing unlocks, nothing flushes, nothing is retried.
-    expect(boundary.toastWarning).toHaveBeenCalledWith("Internal error occurred.");
+    expect(boundary.toastWarning).toHaveBeenCalledWith("A message is being sent. Please wait.");
     const state = useChatStore.getState();
     expect(state.isStreaming).toBe(true);
     expect(state.queue).toHaveLength(1);
@@ -595,5 +605,49 @@ describe("Webview mid-turn warnings", () => {
     await vi.waitFor(() => {
       expect(boundary.streamChat).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("queues a rejected message when the engine is still busy", async () => {
+    useChatStore.getState().sendMessage("first message");
+    useChatStore.getState().processEvent({
+      type: "TurnBegin",
+      payload: { user_input: "first message" },
+    });
+    useChatStore.setState({
+      isStreaming: false,
+      handshakeReceived: false,
+      pendingInput: null,
+    });
+
+    useChatStore.getState().sendMessage("message sent while busy");
+    useChatStore.getState().processEvent({
+      type: "error",
+      code: "turn.agent_busy",
+      message: "A message is being sent. Please wait.",
+      detail: "A response is already being generated for this session.",
+      phase: "runtime",
+      terminal: false,
+    });
+
+    expect(useChatStore.getState()).toMatchObject({
+      isStreaming: true,
+      handshakeReceived: true,
+      pendingInput: null,
+      shouldRestorePendingInput: false,
+      queue: [expect.objectContaining({ content: "message sent while busy", model: "plain" })],
+    });
+    expect(boundary.toastWarning).toHaveBeenCalledWith("A message is being sent. Please wait.");
+
+    useChatStore.getState().processEvent({ type: "stream_complete", result: { status: "finished" } });
+    await vi.waitFor(() => {
+      expect(boundary.streamChat).toHaveBeenCalledTimes(2);
+    });
+    expect(boundary.streamChat).toHaveBeenLastCalledWith(
+      "message sent while busy",
+      "plain",
+      "off",
+      false,
+      undefined,
+    );
   });
 });

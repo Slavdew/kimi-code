@@ -2,7 +2,7 @@
 
 AI coding assistant for VS Code, built for long-context workflows and complex coding tasks.
 
-This is an unofficial community build based on Kimi Code 0.8.4. It adds theme-aware Kimi icons, concise session titles and persistent renaming to editor tabs, quick actions in the editor title bar and tab context menu, and restoration of open conversations after a window reload. It also shows managed subscription quotas, centers the conversation and composer at a readable width, and preserves single line breaks in sent messages. Install the VSIX over the official extension and disable automatic updates for Kimi Code if you want to keep this build.
+This is an unofficial community build based on Kimi Code 0.8.4. It adds theme-aware Kimi icons, concise session titles and persistent renaming to editor tabs, quick actions in the editor title bar and tab context menu, and restoration of open conversations after a window reload. It also shows managed subscription quotas, centers the conversation and composer at a readable width, and preserves single line breaks in sent messages. The composer restores text only after an unsent-message failure, and messages rejected because the session is busy stay queued for delivery. Install the VSIX over the official extension and disable automatic updates for Kimi Code if you want to keep this build.
 
 ## Features
 

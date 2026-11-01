@@ -122,6 +122,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await vscode.commands.executeCommand("kimi.webview.focus");
       provider?.broadcast(Events.NewConversation, {});
     },
+    "kimi.renameConversation": async () => {
+      if (await provider?.renameActivePanel()) return;
+      await vscode.window.showWarningMessage("Open a Kimi editor tab to rename its conversation.");
+    },
     "kimi.showLogs": () => outputChannel?.show(),
     "kimi.resetKimi": () => provider?.resetAllWebviews(),
     "kimi.logout": async () => {

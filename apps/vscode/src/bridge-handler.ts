@@ -110,6 +110,13 @@ export class BridgeHandler {
     }
   }
 
+  async renameSession(webviewId: string, title: string): Promise<void> {
+    const sessionId = this.fileManager.getSessionId(webviewId);
+    if (sessionId === null) throw new Error("There is no active conversation to rename.");
+    await this.runtime.harness.renameSession({ id: sessionId, title });
+    await this.emitViewState(webviewId);
+  }
+
   private get workspaceRoot(): string | null {
     return this.workspaceRootUri?.fsPath ?? null;
   }

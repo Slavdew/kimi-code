@@ -8,17 +8,79 @@
  * Wiring: resolveAppView is pure; the bridge and toast boundaries are mocked away.
  * Run: pnpm exec vitest run --config apps/vscode/vitest.config.ts test/app-init.test.ts
  */
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const bridge = vi.hoisted(() => ({
+  setWorkDir: vi.fn(),
+  loadSessionHistory: vi.fn(),
+  resetSession: vi.fn(),
+}));
 
 vi.mock("@/services", () => ({
-  bridge: {},
+  bridge,
   Events: {},
 }));
 vi.mock("@/components/ui/sonner", () => ({
   toast: { error: vi.fn(), warning: vi.fn() },
 }));
 
-import { resolveAppView, type AppStatus } from "../webview-ui/src/hooks/useAppInit";
+import { resolveAppView, restorePanelSession, type AppStatus } from "../webview-ui/src/hooks/useAppInit";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  bridge.resetSession.mockResolvedValue({ ok: true });
+});
+
+describe("restorePanelSession", () => {
+  it("restores the working directory and conversation history", async () => {
+    bridge.setWorkDir.mockResolvedValue({ ok: true, workDir: "/workspace/packages/demo" });
+    const events = [{ type: "TurnBegin" }];
+    bridge.loadSessionHistory.mockResolvedValue(events);
+    const setCurrentWorkDir = vi.fn();
+    const loadSession = vi.fn(async () => undefined);
+
+    const error = await restorePanelSession({
+      state: { sessionId: "session-1", workDir: "/workspace/packages/demo", title: "Renamed chat" },
+      workspaceRoot: "/workspace",
+      setCurrentWorkDir,
+      loadSession,
+    });
+
+    expect(error).toBeNull();
+    expect(setCurrentWorkDir).toHaveBeenCalledWith("/workspace/packages/demo");
+    expect(loadSession).toHaveBeenCalledWith("session-1", events);
+    expect(bridge.resetSession).not.toHaveBeenCalled();
+  });
+
+  it("keeps the UI usable and clears stale state when the saved session is unavailable", async () => {
+    bridge.setWorkDir.mockResolvedValue({ ok: true, workDir: "/workspace" });
+    bridge.loadSessionHistory.mockRejectedValue(new Error("Session was not found"));
+    const loadSession = vi.fn();
+
+    const error = await restorePanelSession({
+      state: { sessionId: "deleted-session", workDir: null, title: "Old chat" },
+      workspaceRoot: "/workspace",
+      setCurrentWorkDir: vi.fn(),
+      loadSession,
+    });
+
+    expect(error).toBe("Session was not found");
+    expect(loadSession).not.toHaveBeenCalled();
+    expect(bridge.resetSession).toHaveBeenCalledOnce();
+  });
+
+  it("does nothing for a panel without serialized state", async () => {
+    const error = await restorePanelSession({
+      state: null,
+      workspaceRoot: "/workspace",
+      setCurrentWorkDir: vi.fn(),
+      loadSession: vi.fn(),
+    });
+
+    expect(error).toBeNull();
+    expect(bridge.setWorkDir).not.toHaveBeenCalled();
+  });
+});
 
 function resolve(
   status: AppStatus,

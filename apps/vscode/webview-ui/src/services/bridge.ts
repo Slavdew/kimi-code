@@ -1,4 +1,4 @@
-import { Methods, Events } from "shared/bridge";
+import { Methods, Events, parseKimiPanelState, type KimiPanelState } from "shared/bridge";
 import type {
   ApprovalResponse,
   ContentPart,
@@ -43,7 +43,7 @@ class Bridge {
   private webviewId: string;
 
   constructor() {
-    this.webviewId = document.body.getAttribute("data-webviewid") || `unknown_${Date.now()}`;
+    this.webviewId = document.body.dataset.webviewid || `unknown_${Date.now()}`;
 
     if (typeof acquireVsCodeApi === "function") {
       this.vscode = acquireVsCodeApi();
@@ -104,6 +104,20 @@ class Bridge {
     return () => {
       this.eventHandlers.get(event)?.delete(handler as (data: unknown) => void);
     };
+  }
+
+  getInitialPanelState(): KimiPanelState | null {
+    const serialized = document.body.dataset.panelState;
+    if (serialized === undefined) return null;
+    try {
+      return parseKimiPanelState(JSON.parse(serialized));
+    } catch {
+      return null;
+    }
+  }
+
+  setPanelState(state: KimiPanelState): void {
+    this.vscode.setState(state);
   }
 
   checkWorkspace() {

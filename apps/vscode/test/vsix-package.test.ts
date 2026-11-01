@@ -24,6 +24,25 @@ afterEach(async () => {
 });
 
 describe('VSIX package CLI (target planning and validation)', () => {
+  it('contributes Kimi actions only to Kimi editor tabs', async () => {
+    const manifest = JSON.parse(await readFile(join(appRoot, 'package.json'), 'utf8'));
+    const openInTab = manifest.contributes.commands.find((command: { command: string }) => command.command === 'kimi.openInTab');
+
+    expect(openInTab.icon).toBe('resources/kimi-icon.svg');
+    expect(manifest.contributes.menus['editor/title']).toEqual([
+      {
+        command: 'kimi.openInTab',
+        when: 'activeEditor == kimiPanel',
+        group: 'navigation@1',
+      },
+      {
+        command: 'kimi.newConversation',
+        when: 'activeEditor == kimiPanel',
+        group: 'navigation@2',
+      },
+    ]);
+  });
+
   it('plans all six supported targets when no target is supplied', async () => {
     const outputDir = await makeTempDir('kimi-package-plan-');
 

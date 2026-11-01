@@ -1,9 +1,9 @@
 {
   "name": "kimi-code",
   "publisher": "moonshot-ai",
-  "displayName": "Kimi Code",
-  "description": "Official Kimi Code plugin for VS Code",
-  "version": "0.8.4",
+  "displayName": "Kimi Code — Tab Experience (Unofficial)",
+  "description": "Unofficial Kimi Code build with restored editor tabs, session titles, and quick actions",
+  "version": "0.8.4-tab.1",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -106,7 +106,7 @@
       {
         "command": "kimi.openInTab",
         "title": "Kimi Code: Open in New Tab",
-        "icon": "$(link-external)"
+        "icon": "resources/kimi-icon.svg"
       },
       {
         "command": "kimi.openInSideBar",
@@ -180,6 +180,18 @@
       ]
     },
     "menus": {
+      "editor/title": [
+        {
+          "command": "kimi.openInTab",
+          "when": "activeEditor == kimiPanel",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kimi.newConversation",
+          "when": "activeEditor == kimiPanel",
+          "group": "navigation@2"
+        }
+      ],
       "view/title": [
         {
           "command": "kimi.openInTab",

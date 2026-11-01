@@ -13,6 +13,7 @@ import { useChatStore, useSettingsStore } from "./stores";
 import { bridge, Events } from "./services";
 import { useAppInit, resolveAppView } from "./hooks/useAppInit";
 import { isPreflightError } from "shared/errors";
+import type { KimiPanelState } from "shared/bridge";
 import type { UIStreamEvent, StreamError, ExtensionConfig } from "shared/types";
 import "./styles/index.css";
 
@@ -84,6 +85,10 @@ export default function App() {
   const { status, errorMessage, modelsCount, refresh } = useAppInit();
   const [skippedLogin, setSkippedLogin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+
+  useEffect(() => {
+    return bridge.on<KimiPanelState>(Events.PanelStateChanged, (state) => bridge.setPanelState(state));
+  }, []);
 
   const handleLoginSuccess = useCallback(() => {
     setShowLogin(false);

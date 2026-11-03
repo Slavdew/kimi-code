@@ -28,10 +28,7 @@ describe('VSIX package CLI (target planning and validation)', () => {
     const manifest = JSON.parse(await readFile(join(appRoot, 'package.json'), 'utf8'));
     const openInTab = manifest.contributes.commands.find((command: { command: string }) => command.command === 'kimi.openInTab');
 
-    expect(openInTab.icon).toEqual({
-      light: 'resources/kimi-icon.svg',
-      dark: 'resources/kimi-icon-dark.svg',
-    });
+    expect(openInTab.icon).toBe('$(add)');
     expect(manifest.contributes.menus['editor/title']).toEqual([
       {
         command: 'kimi.openInTab',
